@@ -1,17 +1,15 @@
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
-
 (function (root, factory) {
-  if ((typeof module === 'undefined' ? 'undefined' : _typeof(module)) === 'object') {
+  if (typeof module === 'object') {
     module.exports = factory;
   } else if (typeof define === 'function' && define.amd) {
     define(factory);
   } else {
-    root.MediumEditorPhrase = factory;
+    root.MediumEditorFootnote = factory;
   }
-})(this, function (MediumEditor) {
-  var placeholderText = 'safariNeedsTextNode!@#$%^()*~',
-      placeholderHtml = '<div data-phrase-placeholder="true"></div>',
-      placeholderSelector = 'div[data-phrase-placeholder="true"]';
+}(this, (function (MediumEditor) {
+  const placeholderText = 'safariNeedsTextNode!@#$%^()*~',
+    placeholderHtml = '<div data-phrase-placeholder="true"></div>',
+    placeholderSelector = 'div[data-phrase-placeholder="true"]';
 
   /**
    * @param {string} html
@@ -26,9 +24,8 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
    * @returns {number} offset of the child relative to its parentNode
    */
   function getChildOffset(child) {
-    var offset = 1,
-        // offset begins at 1
-    sibling = child.parentNode.firstChild;
+    var offset = 1, // offset begins at 1
+      sibling = child.parentNode.firstChild;
 
     while (sibling !== child) {
       offset += 1;
@@ -37,26 +34,30 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
     return offset;
   }
 
+  // This has been quite superficially adapted from the original Medium Editor Phrase,
+  // so the footnote link is generally referred to as the 'phrase' below.
+  // We add some listeners to maintain the reciprocal link with the footnote element,
+  // and a slightly different set of configuration options to set the properties of
+  // link and footnote.
+
   return MediumEditor.extensions.button.extend({
     // default values can be overwritten by options on init
-    phraseTagName: 'span', // lowercase tagName of the phrase tag
-    phraseClassList: [], // classes applied to each phrase tag
-    name: 'phrase', // name used to reference the button from Medium Editor
-    contentDefault: 'S', // html visible to the user in the toolbar button
-    aria: 'Span Button', // aria label
+    footnoteContainer: null,
+    linkTagName: 'a', // lowercase tagName of the link (phrase) tag
+    linkClassList: ['footnoted'], // classes applied to each link (phrase) tag
+    footnoteClassList: ['footnote'], // classes applied to each phrase tag
+    name: 'footnote', // name used to reference the button from Medium Editor
+    contentDefault: 'ƒ', // html visible to the user in the toolbar button
+    aria: 'Footnote Button', // aria label
     classList: [], // classes added to the button
 
-    init: function init() {
+    init: function () {
       MediumEditor.Extension.prototype.init.apply(this, arguments);
 
       // properties not set in options
       this.useQueryState = false; // cannot rely on document.queryCommandState()
-      this.phraseHasNoClass = this.phraseClassList.length === 0;
-      this.phraseSelector = this.phraseTagName + this.phraseClassList.reduce(function (selector, className) {
-        return selector + '.' + className;
-      }, '');
-      this.openingTag = '<' + this.phraseTagName + (this.phraseHasNoClass ? '' : ' class="' + this.phraseClassList.join(' ').trim() + '"') + '>';
-      this.closingTag = '</' + this.phraseTagName + '>';
+      this.linkHasNoClass = this.linkClassList.length === 0;
+      this.linkSelector = this.linkTagName + this.linkClassList.reduce((selector, className) => selector + '.' + className, '');
       this.button = this.createButton();
       this.on(this.button, 'click', this.handleClick.bind(this));
     },
@@ -65,39 +66,43 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * returns a clone of the selection inside a `div` container
      * @returns {Element}
      */
-    cloneSelection: function cloneSelection() {
+    cloneSelection: function () {
       var range = MediumEditor.selection.getSelectionRange(this.document),
-          container = document.createElement('div');
+        container = document.createElement('div');
 
       container.appendChild(range.cloneContents());
       return container;
     },
 
     /**
-     * check if the node is a phrase
+     * check if the node is a footnote link
      * @param {Node} node
      * @returns {boolean}
      */
-    isPhraseNode: function isPhraseNode(node) {
-      return !!(node && node.tagName.toLowerCase() === this.phraseTagName && (this.phraseHasNoClass ? !node.className : this.phraseClassList.reduce(function (hasAll, c) {
-        return hasAll && node.classList.contains(c);
-      }, true)));
+    isPhraseNode: function (node) {
+      return !!(
+        node &&
+        node.tagName.toLowerCase() === this.linkTagName &&
+        (this.linkHasNoClass ? !node.className : this.linkClassList.reduce((hasAll, c) => hasAll && node.classList.contains(c), true))
+      );
     },
 
     /**
      * @param {Element} phrase
      */
-    removePhraseTags: function removePhraseTags(phrase) {
+    removeFootnoteTags: function (phrase) {
+      var footnoteId = phrase.id.replace('link-', '');
       phrase.outerHTML = phrase.innerHTML;
+      this.removeFootnote(footnoteId);
     },
 
     /**
      * @param {string} phrase
      * @returns {string}
      */
-    addPhraseTags: function addPhraseTags(phrase) {
+    addFootnoteTags: function (phrase) {
       var closingTagsAtStart = '',
-          openingTagsAtEnd = '';
+        openingTagsAtEnd = '';
 
       // innerHTML sometimes returns fragments that start or end
       // with tags that we do not want to wrap in the phrase tags.
@@ -111,25 +116,60 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
         return '';
       });
 
+      footnoteId = this.generateId(phrase);
+      openingTag = `<${ this.linkTagName }${ this.linkHasNoClass ? '' : ' class="' + this.linkClassList.join(' ').trim() + '"' } id="link-${footnoteId}" href="#footnote-${footnoteId}">`;
+      closingTag = `</${ this.linkTagName }>`;
+
       // only add phrase tags if there is phrase text
       if (phrase) {
-        phrase = this.openingTag + phrase + this.closingTag;
+        phrase = openingTag + phrase + closingTag;
       }
-
+      this.addFootnote(footnoteId);
       return closingTagsAtStart + phrase + openingTagsAtEnd;
+    },
+
+    generateId: function (phrase) {
+      var id_base = (phrase.length > 24) ? phrase.substr(0, 24) : phrase;
+      return encodeURIComponent(id_base.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+    },
+
+    addFootnote: function (footnoteId) {
+      var container,
+          elementId = "footnote-" + footnoteId,
+          footnote = document.getElementById(elementId);
+
+      if (!footnote) {
+        container = this.base.elements[0].querySelector('.footnotes');
+        if (!container) {
+          container = document.createElement('div');
+          container.classList.add('footnotes');
+          this.base.elements[0].appendChild(container);
+        }
+  
+        footnote = document.createElement('div');
+        footnote.id = elementId;
+        footnote.classList.add(...this.footnoteClassList);
+        footnote.innerHTML = `<a href="#link-${footnoteId}"><p>Your footnote here.</p></a>`
+        container.append(footnote);
+      }
+      return footnote;
+    },
+
+    removeFootnote: function (footnoteId) {
+      var elementId = "footnote-" + footnoteId,
+          footnote = document.getElementById(elementId);
+      if (footnote) footnote.parentNode.removeChild(footnote);
     },
 
     /**
      * @param {Node} container
      * @returns {Array} Array of phrase elements that are in the container
      */
-    getSelectionPhrases: function getSelectionPhrases(container) {
-      var selectionPhrases = Array.prototype.slice.call(container.querySelectorAll(this.phraseSelector));
+    getSelectionPhrases: function (container) {
+      var selectionPhrases = Array.prototype.slice.call(container.querySelectorAll(this.linkSelector));
 
       if (this.phraseHasNoClass) {
-        selectionPhrases = selectionPhrases.filter(function (phrase) {
-          return !phrase.className;
-        }); // ensure phrases have no className
+        selectionPhrases = selectionPhrases.filter(phrase => !phrase.className); // ensure phrases have no className
       }
       return selectionPhrases;
     },
@@ -139,10 +179,10 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * @param {string} html
      * @param {boolean} [shouldSelectHtml]
      */
-    replaceSelectionHtml: function replaceSelectionHtml(html, shouldSelectHtml) {
+    replaceSelectionHtml: function (html, shouldSelectHtml) {
       var fragment,
-          range = MediumEditor.selection.getSelectionRange(this.document),
-          selection = this.document.getSelection();
+        range = MediumEditor.selection.getSelectionRange(this.document),
+        selection = this.document.getSelection();
 
       // insert html
       range.deleteContents();
@@ -167,7 +207,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * @param {Node} node
      * @returns {string}
      */
-    getNodeHtml: function getNodeHtml(node) {
+    getNodeHtml: function (node) {
       switch (node.nodeType) {
         case Node.ELEMENT_NODE:
           return node.innerHTML;
@@ -182,7 +222,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * check if the selection has a phrase as a child or ancestor
      * @returns {boolean}
      */
-    isAlreadyApplied: function isAlreadyApplied() {
+    isAlreadyApplied: function () {
       return this.hasSelectionPhrase() || !!this.getAncestorPhrase();
     },
 
@@ -192,7 +232,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * @param {boolean} after - if true, insert after
      * @returns {Node}
      */
-    insertTextNodePlaceholder: function insertTextNodePlaceholder(node, after) {
+    insertTextNodePlaceholder: function (node, after) {
       return node.parentNode.insertBefore(this.document.createTextNode(placeholderText), after ? node.nextSibling : node);
     },
 
@@ -200,7 +240,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * @param {Node} node - the placeholder will be inserted before this node
      * @returns {Node}
      */
-    insertTextNodePlaceholderBefore: function insertTextNodePlaceholderBefore(node) {
+    insertTextNodePlaceholderBefore: function (node) {
       return this.insertTextNodePlaceholder(node);
     },
 
@@ -208,7 +248,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * @param {Node} node - the placeholder will be inserted after this node
      * @returns {Node}
      */
-    insertTextNodePlaceholderAfter: function insertTextNodePlaceholderAfter(node) {
+    insertTextNodePlaceholderAfter: function (node) {
       return this.insertTextNodePlaceholder(node, true);
     },
 
@@ -219,25 +259,21 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * @param {Element} ancestorPhrase
      * @returns {string}
      */
-    removeAncestorPhrase: function removeAncestorPhrase(ancestorPhrase) {
-      var _this = this;
-
+    removeAncestorPhrase: function (ancestorPhrase) {
       var ancestorPhraseParent = ancestorPhrase.parentNode,
-          selectionHtml = this.getNodeHtml(this.cloneSelection()),
-          selection = this.document.getSelection(),
-          range = this.document.createRange(),
-          placeholderEl,
-          textNodePlaceholder;
+        selectionHtml = this.getNodeHtml(this.cloneSelection()),
+        selection = this.document.getSelection(),
+        range = this.document.createRange(),
+        placeholderEl,
+        textNodePlaceholder;
 
       // use the placeholder to update the html before and after the selection
       this.replaceSelectionHtml(placeholderHtml, false);
       ancestorPhrase.outerHTML = ancestorPhrase.cloneNode(true).innerHTML.split(placeholderHtml)
-      // add phrase tags to fragments before and after selection
-      .map(function (phrase) {
-        return phrase && _this.addPhraseTags(phrase);
-      })
-      // re-insert placeholder where selection was
-      .join(placeholderHtml);
+        // add phrase tags to fragments before and after selection
+        .map(phrase => phrase && this.addFootnoteTags(phrase))
+        // re-insert placeholder where selection was
+        .join(placeholderHtml);
 
       // select a text node where the original selection needs to be re-inserted
       selection.removeAllRanges();
@@ -256,11 +292,10 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * @param {Node} ancestorNode
      * @returns {boolean}
      */
-    isLastDescendantTextNode: function isLastDescendantTextNode(node, ancestorNode) {
-      var n,
-          nodeFound,
-          isLastDescendant = true,
-          walk = this.document.createTreeWalker(ancestorNode, NodeFilter.SHOW_TEXT, null, false);
+    isLastDescendantTextNode: function (node, ancestorNode) {
+      var n, nodeFound,
+        isLastDescendant = true,
+        walk = this.document.createTreeWalker(ancestorNode, NodeFilter.SHOW_TEXT, null, false);
 
       while (n = walk.nextNode() && isLastDescendant) {
         if (nodeFound) {
@@ -278,7 +313,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * @param {Node} ancestorNode
      * @returns {boolean}
      */
-    isFirstDescendantTextNode: function isFirstDescendantTextNode(node, ancestorNode) {
+    isFirstDescendantTextNode: function (node, ancestorNode) {
       var firstDescendantTextNode = this.document.createTreeWalker(ancestorNode, NodeFilter.SHOW_TEXT, null, false).firstChild();
 
       return node === firstDescendantTextNode;
@@ -290,19 +325,19 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * then we need to make sure that the range contains the entire phrase
      * so that the phrase tags are removed.
      */
-    ensurePhraseSelected: function ensurePhraseSelected() {
+    ensurePhraseSelected: function () {
       var selection = this.window.getSelection(),
-          range = MediumEditor.selection.getSelectionRange(this.document),
-          startContainer = range.startContainer,
-          startOffset = range.startOffset,
-          endContainer = range.endContainer,
-          endOffset = range.endOffset,
-          hasMultipleContainersSelected = endContainer !== startContainer,
-          hasFullySelectedEndContainer = endContainer.nodeType === Node.TEXT_NODE && endOffset === endContainer.textContent.length,
-          hasFullySelectedStartContainer = startContainer.nodeType === Node.TEXT_NODE && startOffset === 0,
-          rangeContainingAncestorPhrase = this.document.createRange(),
-          containerAncestorPhrase,
-          textNodePlaceholder;
+        range = MediumEditor.selection.getSelectionRange(this.document),
+        startContainer = range.startContainer,
+        startOffset = range.startOffset,
+        endContainer = range.endContainer,
+        endOffset = range.endOffset,
+        hasMultipleContainersSelected = endContainer !== startContainer,
+        hasFullySelectedEndContainer = endContainer.nodeType === Node.TEXT_NODE && endOffset === endContainer.textContent.length,
+        hasFullySelectedStartContainer = startContainer.nodeType === Node.TEXT_NODE && startOffset === 0,
+        rangeContainingAncestorPhrase = this.document.createRange(),
+        containerAncestorPhrase,
+        textNodePlaceholder;
 
       if (hasMultipleContainersSelected) {
 
@@ -325,8 +360,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
           }
         }
 
-        if (!rangeContainingAncestorPhrase.collapsed) {
-          // there is a new range
+        if (!rangeContainingAncestorPhrase.collapsed) { // there is a new range
           selection.removeAllRanges();
           selection.addRange(rangeContainingAncestorPhrase);
         }
@@ -337,21 +371,19 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * get the HTML from the selected range and either add or remove the phrase tags.
      * @returns {string} HTML
      */
-    togglePhraseTags: function togglePhraseTags() {
-      var container, selectionPhrases, html;
+    toggleFootnoteTags: function () {
+      var container, selectionPhrases, html, footnote_id;
 
       this.ensurePhraseSelected();
       container = this.cloneSelection();
       selectionPhrases = this.getSelectionPhrases(container);
       html = container.innerHTML;
 
-      if (selectionPhrases.length) {
-        // selection already has phrases, so remove them
-        selectionPhrases.forEach(this.removePhraseTags); // remove phrases while keeping their innerHTML
+      if (selectionPhrases.length) { // selection already has phrases, so remove them
+        selectionPhrases.forEach(this.removeFootnoteTags, this); // remove phrases while keeping their innerHTML
         html = container.innerHTML;
-      } else if (container.textContent) {
-        // no phrases found and has textContent, so add phrase tags
-        html = this.addPhraseTags(html);
+      } else if (container.textContent) { // no phrases found and has textContent, so add phrase tags
+        html = this.addFootnoteTags(html);
       }
       return stripPlaceholderText(html); // placeholderText may have been added by this.ensurePhraseSelected()
     },
@@ -360,7 +392,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * traverse down from the selection to find at least one phrase
      * @returns {boolean}
      */
-    hasSelectionPhrase: function hasSelectionPhrase() {
+    hasSelectionPhrase: function () {
       return this.getSelectionPhrases(this.cloneSelection()).length > 0;
     },
 
@@ -368,7 +400,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * traverse up from the selection to find the first ancestor phrase
      * @returns {Node|boolean}
      */
-    getAncestorPhrase: function getAncestorPhrase() {
+    getAncestorPhrase: function () {
       return MediumEditor.util.traverseUp(MediumEditor.selection.getSelectionRange(this.document).startContainer, this.isPhraseNode.bind(this));
     },
 
@@ -376,14 +408,14 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
      * when the button is clicked, update the html
      * @param {object} e
      */
-    handleClick: function handleClick(e) {
+    handleClick: function (e) {
       var ancestorPhrase = this.getAncestorPhrase();
 
       e.preventDefault();
       e.stopPropagation();
-      this.replaceSelectionHtml(!ancestorPhrase || this.hasSelectionPhrase() ? this.togglePhraseTags() : this.removeAncestorPhrase(ancestorPhrase));
+      this.replaceSelectionHtml(!ancestorPhrase || this.hasSelectionPhrase() ? this.toggleFootnoteTags() : this.removeAncestorPhrase(ancestorPhrase));
       this.isAlreadyApplied() ? this.setActive() : this.setInactive(); // update button state
       this.base.checkContentChanged(); // triggers 'editableInput' event
-    }
+    },
   });
-}(typeof require === 'function' ? require('medium-editor') : MediumEditor));
+}(typeof require === 'function' ? require('medium-editor') : MediumEditor))));

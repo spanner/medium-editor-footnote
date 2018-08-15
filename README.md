@@ -39,6 +39,8 @@ npm install medium-editor-footnote
 
 Options unique to Medium Editor Footnote:
 
+* `footnoteContainerTagName`: lowercase tag name for the footnote container, which will be appended to the medium-editor element; default `div`
+* `footnoteContainerClassList`: classes applied to (or used to find) the footnote container; default `['footnotes']`
 * `footnoteTagName`: lowercase tag name for the footnote element; default `div`
 * `footnoteClassList`: classes applied to each footnote element; default `['footnote']`
 * `linkTagName`: lowercase tag name for the footnote link element; default `a`
