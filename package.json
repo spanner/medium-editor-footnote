@@ -1,8 +1,8 @@
 {
-  "name": "medium-editor-phrase",
+  "name": "medium-editor-footnote",
   "version": "1.0.2",
-  "description": "Phrase button for Medium Editor; useful for adding span tags to text.",
-  "main": "dist/medium-editor-phrase.js",
+  "description": "Footnote button for Medium Editor; makes linking footnotes easy.",
+  "main": "dist/medium-editor-footnote.js",
   "files": [
     "dist"
   ],
@@ -29,7 +29,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nymag/medium-editor-phrase.git"
+    "url": "https://github.com/spanner/medium-editor-footnote.git"
   },
   "keywords": [
     "medium",
@@ -42,9 +42,9 @@
   "author": "New York Media",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/nymag/medium-editor-phrase/issues"
+    "url": "https://github.com/spanner/medium-editor-footnote/issues"
   },
-  "homepage": "https://github.com/nymag/medium-editor-phrase",
+  "homepage": "https://github.com/spanner/medium-editor-footnote",
   "devDependencies": {
     "babel-preset-es2015-script": "^1.0.0",
     "babelify": "^7.3.0",

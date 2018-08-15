@@ -6,11 +6,11 @@ const gulp = require('gulp'),
 
 gulp.task('default', function (cb) {
   pump([
-      gulp.src('./src/medium-editor-phrase.js'),
+      gulp.src('./src/medium-editor-footnote.js'),
       gulpBabel({ presets: ['es2015-script'] }),
-      gulpRename('medium-editor-phrase.js'),
+      gulpRename('medium-editor-footnote.js'),
       gulp.dest('dist'),
-      gulpRename('medium-editor-phrase.min.js'),
+      gulpRename('medium-editor-footnote.min.js'),
       gulpUglify(),
       gulp.dest('dist')
     ],

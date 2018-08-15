@@ -1,7 +1,7 @@
 const MediumEditor = require('medium-editor'),
   dirname = __dirname.split('/').pop(),
   filename = __filename.split('/').pop().split('.').shift(),
-  lib = require('./medium-editor-phrase'); // static-analysis means this must be string, not ('./' + filename);
+  lib = require('./medium-editor-footnote'); // static-analysis means this must be string, not ('./' + filename);
 
 let phraseButtonName = '', count = 0; // phrase button name needs to be unique each time
 

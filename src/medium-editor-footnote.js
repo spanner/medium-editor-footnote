@@ -1,15 +1,17 @@
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+
 (function (root, factory) {
-  if (typeof module === 'object') {
+  if ((typeof module === 'undefined' ? 'undefined' : _typeof(module)) === 'object') {
     module.exports = factory;
   } else if (typeof define === 'function' && define.amd) {
     define(factory);
   } else {
     root.MediumEditorPhrase = factory;
   }
-}(this, (function (MediumEditor) {
-  const placeholderText = 'safariNeedsTextNode!@#$%^()*~',
-    placeholderHtml = '<div data-phrase-placeholder="true"></div>',
-    placeholderSelector = 'div[data-phrase-placeholder="true"]';
+})(this, function (MediumEditor) {
+  var placeholderText = 'safariNeedsTextNode!@#$%^()*~',
+      placeholderHtml = '<div data-phrase-placeholder="true"></div>',
+      placeholderSelector = 'div[data-phrase-placeholder="true"]';
 
   /**
    * @param {string} html
@@ -24,8 +26,9 @@
    * @returns {number} offset of the child relative to its parentNode
    */
   function getChildOffset(child) {
-    var offset = 1, // offset begins at 1
-      sibling = child.parentNode.firstChild;
+    var offset = 1,
+        // offset begins at 1
+    sibling = child.parentNode.firstChild;
 
     while (sibling !== child) {
       offset += 1;
@@ -43,15 +46,17 @@
     aria: 'Span Button', // aria label
     classList: [], // classes added to the button
 
-    init: function () {
+    init: function init() {
       MediumEditor.Extension.prototype.init.apply(this, arguments);
 
       // properties not set in options
       this.useQueryState = false; // cannot rely on document.queryCommandState()
       this.phraseHasNoClass = this.phraseClassList.length === 0;
-      this.phraseSelector = this.phraseTagName + this.phraseClassList.reduce((selector, className) => selector + '.' + className, '');
-      this.openingTag = `<${ this.phraseTagName }${ this.phraseHasNoClass ? '' : ' class="' + this.phraseClassList.join(' ').trim() + '"' }>`;
-      this.closingTag = `</${ this.phraseTagName }>`;
+      this.phraseSelector = this.phraseTagName + this.phraseClassList.reduce(function (selector, className) {
+        return selector + '.' + className;
+      }, '');
+      this.openingTag = '<' + this.phraseTagName + (this.phraseHasNoClass ? '' : ' class="' + this.phraseClassList.join(' ').trim() + '"') + '>';
+      this.closingTag = '</' + this.phraseTagName + '>';
       this.button = this.createButton();
       this.on(this.button, 'click', this.handleClick.bind(this));
     },
@@ -60,9 +65,9 @@
      * returns a clone of the selection inside a `div` container
      * @returns {Element}
      */
-    cloneSelection: function () {
+    cloneSelection: function cloneSelection() {
       var range = MediumEditor.selection.getSelectionRange(this.document),
-        container = document.createElement('div');
+          container = document.createElement('div');
 
       container.appendChild(range.cloneContents());
       return container;
@@ -73,18 +78,16 @@
      * @param {Node} node
      * @returns {boolean}
      */
-    isPhraseNode: function (node) {
-      return !!(
-        node &&
-        node.tagName.toLowerCase() === this.phraseTagName &&
-        (this.phraseHasNoClass ? !node.className : this.phraseClassList.reduce((hasAll, c) => hasAll && node.classList.contains(c), true))
-      );
+    isPhraseNode: function isPhraseNode(node) {
+      return !!(node && node.tagName.toLowerCase() === this.phraseTagName && (this.phraseHasNoClass ? !node.className : this.phraseClassList.reduce(function (hasAll, c) {
+        return hasAll && node.classList.contains(c);
+      }, true)));
     },
 
     /**
      * @param {Element} phrase
      */
-    removePhraseTags: function (phrase) {
+    removePhraseTags: function removePhraseTags(phrase) {
       phrase.outerHTML = phrase.innerHTML;
     },
 
@@ -92,9 +95,9 @@
      * @param {string} phrase
      * @returns {string}
      */
-    addPhraseTags: function (phrase) {
+    addPhraseTags: function addPhraseTags(phrase) {
       var closingTagsAtStart = '',
-        openingTagsAtEnd = '';
+          openingTagsAtEnd = '';
 
       // innerHTML sometimes returns fragments that start or end
       // with tags that we do not want to wrap in the phrase tags.
@@ -120,11 +123,13 @@
      * @param {Node} container
      * @returns {Array} Array of phrase elements that are in the container
      */
-    getSelectionPhrases: function (container) {
+    getSelectionPhrases: function getSelectionPhrases(container) {
       var selectionPhrases = Array.prototype.slice.call(container.querySelectorAll(this.phraseSelector));
 
       if (this.phraseHasNoClass) {
-        selectionPhrases = selectionPhrases.filter(phrase => !phrase.className); // ensure phrases have no className
+        selectionPhrases = selectionPhrases.filter(function (phrase) {
+          return !phrase.className;
+        }); // ensure phrases have no className
       }
       return selectionPhrases;
     },
@@ -134,10 +139,10 @@
      * @param {string} html
      * @param {boolean} [shouldSelectHtml]
      */
-    replaceSelectionHtml: function (html, shouldSelectHtml) {
+    replaceSelectionHtml: function replaceSelectionHtml(html, shouldSelectHtml) {
       var fragment,
-        range = MediumEditor.selection.getSelectionRange(this.document),
-        selection = this.document.getSelection();
+          range = MediumEditor.selection.getSelectionRange(this.document),
+          selection = this.document.getSelection();
 
       // insert html
       range.deleteContents();
@@ -162,7 +167,7 @@
      * @param {Node} node
      * @returns {string}
      */
-    getNodeHtml: function (node) {
+    getNodeHtml: function getNodeHtml(node) {
       switch (node.nodeType) {
         case Node.ELEMENT_NODE:
           return node.innerHTML;
@@ -177,7 +182,7 @@
      * check if the selection has a phrase as a child or ancestor
      * @returns {boolean}
      */
-    isAlreadyApplied: function () {
+    isAlreadyApplied: function isAlreadyApplied() {
       return this.hasSelectionPhrase() || !!this.getAncestorPhrase();
     },
 
@@ -187,7 +192,7 @@
      * @param {boolean} after - if true, insert after
      * @returns {Node}
      */
-    insertTextNodePlaceholder: function (node, after) {
+    insertTextNodePlaceholder: function insertTextNodePlaceholder(node, after) {
       return node.parentNode.insertBefore(this.document.createTextNode(placeholderText), after ? node.nextSibling : node);
     },
 
@@ -195,7 +200,7 @@
      * @param {Node} node - the placeholder will be inserted before this node
      * @returns {Node}
      */
-    insertTextNodePlaceholderBefore: function (node) {
+    insertTextNodePlaceholderBefore: function insertTextNodePlaceholderBefore(node) {
       return this.insertTextNodePlaceholder(node);
     },
 
@@ -203,7 +208,7 @@
      * @param {Node} node - the placeholder will be inserted after this node
      * @returns {Node}
      */
-    insertTextNodePlaceholderAfter: function (node) {
+    insertTextNodePlaceholderAfter: function insertTextNodePlaceholderAfter(node) {
       return this.insertTextNodePlaceholder(node, true);
     },
 
@@ -214,21 +219,25 @@
      * @param {Element} ancestorPhrase
      * @returns {string}
      */
-    removeAncestorPhrase: function (ancestorPhrase) {
+    removeAncestorPhrase: function removeAncestorPhrase(ancestorPhrase) {
+      var _this = this;
+
       var ancestorPhraseParent = ancestorPhrase.parentNode,
-        selectionHtml = this.getNodeHtml(this.cloneSelection()),
-        selection = this.document.getSelection(),
-        range = this.document.createRange(),
-        placeholderEl,
-        textNodePlaceholder;
+          selectionHtml = this.getNodeHtml(this.cloneSelection()),
+          selection = this.document.getSelection(),
+          range = this.document.createRange(),
+          placeholderEl,
+          textNodePlaceholder;
 
       // use the placeholder to update the html before and after the selection
       this.replaceSelectionHtml(placeholderHtml, false);
       ancestorPhrase.outerHTML = ancestorPhrase.cloneNode(true).innerHTML.split(placeholderHtml)
-        // add phrase tags to fragments before and after selection
-        .map(phrase => phrase && this.addPhraseTags(phrase))
-        // re-insert placeholder where selection was
-        .join(placeholderHtml);
+      // add phrase tags to fragments before and after selection
+      .map(function (phrase) {
+        return phrase && _this.addPhraseTags(phrase);
+      })
+      // re-insert placeholder where selection was
+      .join(placeholderHtml);
 
       // select a text node where the original selection needs to be re-inserted
       selection.removeAllRanges();
@@ -247,10 +256,11 @@
      * @param {Node} ancestorNode
      * @returns {boolean}
      */
-    isLastDescendantTextNode: function (node, ancestorNode) {
-      var n, nodeFound,
-        isLastDescendant = true,
-        walk = this.document.createTreeWalker(ancestorNode, NodeFilter.SHOW_TEXT, null, false);
+    isLastDescendantTextNode: function isLastDescendantTextNode(node, ancestorNode) {
+      var n,
+          nodeFound,
+          isLastDescendant = true,
+          walk = this.document.createTreeWalker(ancestorNode, NodeFilter.SHOW_TEXT, null, false);
 
       while (n = walk.nextNode() && isLastDescendant) {
         if (nodeFound) {
@@ -268,7 +278,7 @@
      * @param {Node} ancestorNode
      * @returns {boolean}
      */
-    isFirstDescendantTextNode: function (node, ancestorNode) {
+    isFirstDescendantTextNode: function isFirstDescendantTextNode(node, ancestorNode) {
       var firstDescendantTextNode = this.document.createTreeWalker(ancestorNode, NodeFilter.SHOW_TEXT, null, false).firstChild();
 
       return node === firstDescendantTextNode;
@@ -280,19 +290,19 @@
      * then we need to make sure that the range contains the entire phrase
      * so that the phrase tags are removed.
      */
-    ensurePhraseSelected: function () {
+    ensurePhraseSelected: function ensurePhraseSelected() {
       var selection = this.window.getSelection(),
-        range = MediumEditor.selection.getSelectionRange(this.document),
-        startContainer = range.startContainer,
-        startOffset = range.startOffset,
-        endContainer = range.endContainer,
-        endOffset = range.endOffset,
-        hasMultipleContainersSelected = endContainer !== startContainer,
-        hasFullySelectedEndContainer = endContainer.nodeType === Node.TEXT_NODE && endOffset === endContainer.textContent.length,
-        hasFullySelectedStartContainer = startContainer.nodeType === Node.TEXT_NODE && startOffset === 0,
-        rangeContainingAncestorPhrase = this.document.createRange(),
-        containerAncestorPhrase,
-        textNodePlaceholder;
+          range = MediumEditor.selection.getSelectionRange(this.document),
+          startContainer = range.startContainer,
+          startOffset = range.startOffset,
+          endContainer = range.endContainer,
+          endOffset = range.endOffset,
+          hasMultipleContainersSelected = endContainer !== startContainer,
+          hasFullySelectedEndContainer = endContainer.nodeType === Node.TEXT_NODE && endOffset === endContainer.textContent.length,
+          hasFullySelectedStartContainer = startContainer.nodeType === Node.TEXT_NODE && startOffset === 0,
+          rangeContainingAncestorPhrase = this.document.createRange(),
+          containerAncestorPhrase,
+          textNodePlaceholder;
 
       if (hasMultipleContainersSelected) {
 
@@ -315,7 +325,8 @@
           }
         }
 
-        if (!rangeContainingAncestorPhrase.collapsed) { // there is a new range
+        if (!rangeContainingAncestorPhrase.collapsed) {
+          // there is a new range
           selection.removeAllRanges();
           selection.addRange(rangeContainingAncestorPhrase);
         }
@@ -326,7 +337,7 @@
      * get the HTML from the selected range and either add or remove the phrase tags.
      * @returns {string} HTML
      */
-    togglePhraseTags: function () {
+    togglePhraseTags: function togglePhraseTags() {
       var container, selectionPhrases, html;
 
       this.ensurePhraseSelected();
@@ -334,10 +345,12 @@
       selectionPhrases = this.getSelectionPhrases(container);
       html = container.innerHTML;
 
-      if (selectionPhrases.length) { // selection already has phrases, so remove them
+      if (selectionPhrases.length) {
+        // selection already has phrases, so remove them
         selectionPhrases.forEach(this.removePhraseTags); // remove phrases while keeping their innerHTML
         html = container.innerHTML;
-      } else if (container.textContent) { // no phrases found and has textContent, so add phrase tags
+      } else if (container.textContent) {
+        // no phrases found and has textContent, so add phrase tags
         html = this.addPhraseTags(html);
       }
       return stripPlaceholderText(html); // placeholderText may have been added by this.ensurePhraseSelected()
@@ -347,7 +360,7 @@
      * traverse down from the selection to find at least one phrase
      * @returns {boolean}
      */
-    hasSelectionPhrase: function () {
+    hasSelectionPhrase: function hasSelectionPhrase() {
       return this.getSelectionPhrases(this.cloneSelection()).length > 0;
     },
 
@@ -355,7 +368,7 @@
      * traverse up from the selection to find the first ancestor phrase
      * @returns {Node|boolean}
      */
-    getAncestorPhrase: function () {
+    getAncestorPhrase: function getAncestorPhrase() {
       return MediumEditor.util.traverseUp(MediumEditor.selection.getSelectionRange(this.document).startContainer, this.isPhraseNode.bind(this));
     },
 
@@ -363,7 +376,7 @@
      * when the button is clicked, update the html
      * @param {object} e
      */
-    handleClick: function (e) {
+    handleClick: function handleClick(e) {
       var ancestorPhrase = this.getAncestorPhrase();
 
       e.preventDefault();
@@ -371,6 +384,6 @@
       this.replaceSelectionHtml(!ancestorPhrase || this.hasSelectionPhrase() ? this.togglePhraseTags() : this.removeAncestorPhrase(ancestorPhrase));
       this.isAlreadyApplied() ? this.setActive() : this.setInactive(); // update button state
       this.base.checkContentChanged(); // triggers 'editableInput' event
-    },
+    }
   });
-}(typeof require === 'function' ? require('medium-editor') : MediumEditor))));
+}(typeof require === 'function' ? require('medium-editor') : MediumEditor));
