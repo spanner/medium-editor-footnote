@@ -45,6 +45,7 @@ Options unique to Medium Editor Footnote:
 * `footnoteClassList`: classes applied to each footnote element; default `['footnote']`
 * `linkTagName`: lowercase tag name for the footnote link element; default `a`
 * `linkClassList`: classes applied to each footnote link element; default `['footnoted']`
+* `defaultFootnote`: filler text placed in newly created footnote
 
 Options inherited from Medium Editor's button:
 

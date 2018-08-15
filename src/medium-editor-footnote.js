@@ -42,10 +42,13 @@
 
   return MediumEditor.extensions.button.extend({
     // default values can be overwritten by options on init
-    footnoteContainer: null,
     linkTagName: 'a', // lowercase tagName of the link (phrase) tag
     linkClassList: ['footnoted'], // classes applied to each link (phrase) tag
-    footnoteClassList: ['footnote'], // classes applied to each phrase tag
+    footnoteTagName: 'p', // lowercase tagName of the appended footnote element
+    footnoteClassList: ['footnote'], // classes applied to each footnote element
+    containerTagName: 'div',
+    containerClassList: ['footnotes'],
+    defaultFootnote: "Your footnote here.",
     name: 'footnote', // name used to reference the button from Medium Editor
     contentDefault: 'ƒ', // html visible to the user in the toolbar button
     aria: 'Footnote Button', // aria label
@@ -55,9 +58,11 @@
       MediumEditor.Extension.prototype.init.apply(this, arguments);
 
       // properties not set in options
+      this.lastRemovedFootnote = null;
       this.useQueryState = false; // cannot rely on document.queryCommandState()
       this.linkHasNoClass = this.linkClassList.length === 0;
       this.linkSelector = this.linkTagName + this.linkClassList.reduce((selector, className) => selector + '.' + className, '');
+      this.containerSelector = this.containerTagName + this.containerClassList.reduce((selector, className) => selector + '.' + className, '');
       this.button = this.createButton();
       this.on(this.button, 'click', this.handleClick.bind(this));
     },
@@ -128,37 +133,56 @@
       return closingTagsAtStart + phrase + openingTagsAtEnd;
     },
 
+    /**
+     * Generate a short, URL-safe and unique id string for a new footnote.
+     * (currently two out of three :)
+     * @param {String} phrase
+     */
     generateId: function (phrase) {
       var id_base = (phrase.length > 24) ? phrase.substr(0, 24) : phrase;
       return encodeURIComponent(id_base.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
     },
 
+    /**
+     * Append and return a destination footnote element for the newly created footnote link.
+     * @param {String} footnoteId
+     * @returns {Node}
+     */
     addFootnote: function (footnoteId) {
       var container,
           elementId = "footnote-" + footnoteId,
-          footnote = document.getElementById(elementId);
-
+          footnote = document.getElementById(elementId),
+          content = this.lastRemovedFootnote || this.defaultFootnote;
+      
       if (!footnote) {
-        container = this.base.elements[0].querySelector('.footnotes');
+        container = this.base.elements[0].querySelector(this.containerSelector);
         if (!container) {
-          container = document.createElement('div');
-          container.classList.add('footnotes');
+          container = document.createElement(this.containerTagName);
+          container.classList.add(...this.containerClassList);
           this.base.elements[0].appendChild(container);
         }
   
-        footnote = document.createElement('div');
+        footnote = document.createElement(this.footnoteTagName);
         footnote.id = elementId;
         footnote.classList.add(...this.footnoteClassList);
-        footnote.innerHTML = `<a href="#link-${footnoteId}"><p>Your footnote here.</p></a>`
+        footnote.innerHTML = `<a href="#link-${footnoteId}">${content}</a>`
+        this.lastRemovedFootnote = ""
         container.append(footnote);
       }
       return footnote;
     },
 
+    /**
+     * Remove the destination footnote element, if any, for the just-removed footnote link.
+     * @param {String} footnoteId
+     */
     removeFootnote: function (footnoteId) {
       var elementId = "footnote-" + footnoteId,
           footnote = document.getElementById(elementId);
-      if (footnote) footnote.parentNode.removeChild(footnote);
+      if (footnote) {
+        this.lastRemovedFootnote = footnote.innerHTML;
+        footnote.parentNode.removeChild(footnote);
+      }
     },
 
     /**
@@ -253,9 +277,8 @@
     },
 
     /**
-     * html before and after the selection remain phrases,
-     * a placeholder text node becomes the selected range,
-     * and the selection html is returned.
+     * Amended: The original split-phrase doesn't make as much sense with footnotes, which are not often subdivided,
+     * so here we simply remove the ancestor footnote element.
      * @param {Element} ancestorPhrase
      * @returns {string}
      */
@@ -266,25 +289,25 @@
         range = this.document.createRange(),
         placeholderEl,
         textNodePlaceholder;
-
-      // use the placeholder to update the html before and after the selection
+      
+      // put a distinctive marker where the selection was
       this.replaceSelectionHtml(placeholderHtml, false);
-      ancestorPhrase.outerHTML = ancestorPhrase.cloneNode(true).innerHTML.split(placeholderHtml)
-        // add phrase tags to fragments before and after selection
-        .map(phrase => phrase && this.addFootnoteTags(phrase))
-        // re-insert placeholder where selection was
-        .join(placeholderHtml);
 
-      // select a text node where the original selection needs to be re-inserted
+      // modify containing html in the usual way, with side effect of removing the footnote
+      this.removeFootnoteTags(ancestorPhrase);
+
+      // replace selection marker with original selection text
       selection.removeAllRanges();
       placeholderEl = ancestorPhraseParent.querySelector(placeholderSelector);
+      // add a text node so that Safari is willing to select
       textNodePlaceholder = this.insertTextNodePlaceholderAfter(placeholderEl);
+      // remove placholder
       placeholderEl.parentNode.removeChild(placeholderEl);
-      range.selectNode(textNodePlaceholder); // selects text node because safari only allows selection of text nodes.
+      // recreate original selection in its place
+      range.selectNode(textNodePlaceholder);
       selection.addRange(range);
 
-      // return the selection html
-      return selectionHtml;
+      return selectionHtml
     },
 
     /**
@@ -413,7 +436,12 @@
 
       e.preventDefault();
       e.stopPropagation();
-      this.replaceSelectionHtml(!ancestorPhrase || this.hasSelectionPhrase() ? this.toggleFootnoteTags() : this.removeAncestorPhrase(ancestorPhrase));
+      if (!ancestorPhrase || this.hasSelectionPhrase()) {
+        this.replaceSelectionHtml(this.toggleFootnoteTags());
+      } else {
+        this.replaceSelectionHtml(this.removeAncestorPhrase(ancestorPhrase));
+      }
+      // this.replaceSelectionHtml(!ancestorPhrase || this.hasSelectionPhrase() ? this.toggleFootnoteTags() : this.removeAncestorPhrase(ancestorPhrase));
       this.isAlreadyApplied() ? this.setActive() : this.setInactive(); // update button state
       this.base.checkContentChanged(); // triggers 'editableInput' event
     },
